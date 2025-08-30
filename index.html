@@ -1,0 +1,67 @@
+// Fixed function to create Position Status chart function
+createPositionStatusChart(data) { const ctx =
+document.getElementById('positionChart').getContext('2d'); // Destroy existing
+chart if it exists if (window.positionChart) { window.positionChart.destroy(); }
+// Count active vs on hold positions let activeCount = 0; let onHoldCount = 0;
+data.forEach(row => { // Get the "Position On Hold Date" column value const
+onHoldDate = row['Position On Hold Date'] || row['positionOnHoldDate'] ||
+row['Position_On_Hold_Date']; // Check if the position is on hold // A position
+is "Active" if the On Hold Date is blank/empty/null // A position is "On Hold"
+if the On Hold Date has any value if (isEmptyCell(onHoldDate)) { activeCount++;
+} else { onHoldCount++; } }); console.log(`Position Status Analysis:`, {
+activeCount, onHoldCount, totalRecords: data.length, sampleOnHoldValues:
+data.slice(0, 5).map(row => ({ position: row['Position Name'], onHoldDate:
+row['Position On Hold Date'], isEmpty: isEmptyCell(row['Position On Hold Date'])
+})) }); window.positionChart = new Chart(ctx, { type: 'pie', data: { labels:
+['Active', 'On Hold'], datasets: [{ data: [activeCount, onHoldCount],
+backgroundColor: [ '#4CAF50', // Green for Active '#FF9800' // Orange for On
+Hold ], borderColor: [ '#45a049', '#f57c00' ], borderWidth: 2 }] }, options: {
+responsive: true, maintainAspectRatio: false, plugins: { legend: { position:
+'bottom' }, title: { display: true, text: `Total Positions: ${data.length}` },
+tooltip: { callbacks: { label: function(context) { const label = context.label
+|| ''; const value = context.parsed; const percentage = ((value / data.length) *
+100).toFixed(1); return `${label}: ${value} (${percentage}%)`; } } } } } }); }
+// Helper function to check if a cell is empty function isEmptyCell(value) { //
+Check for all possible empty values return value === null || value === undefined
+|| value === '' || (typeof value === 'string' && value.trim() === '') || value
+=== 'null' || value === 'NULL' || (typeof value === 'number' && isNaN(value)); }
+// Alternative more robust function if you need to handle Excel date issues
+function isEmptyOrInvalidDate(value) { // First check if it's empty using the
+basic empty check if (isEmptyCell(value)) { return true; } // If it's a string
+that looks like it might be a date but is invalid if (typeof value === 'string')
+{ // Check if it's a string representation of a date const dateValue = new
+Date(value); if (isNaN(dateValue.getTime())) { // If it's not a valid date and
+not obviously empty, consider it empty return true; } } return false; } //
+Updated function to analyze all your recruitment data function
+analyzeRecruitmentData(data) { console.log('Raw data sample:', data.slice(0,
+3)); console.log('Available columns:', Object.keys(data[0] || {})); // Create
+all charts createPositionStatusChart(data); createRecruiterChart(data);
+createClientChart(data); createTimelineChart(data); // Update summary cards with
+correct counts updateSummaryCards(data); } // Function to update summary cards
+with correct metrics function updateSummaryCards(data) { const
+summaryCardsContainer = document.getElementById('summaryCards'); // Calculate
+metrics const totalPositions = data.length; let activePositions = 0; let
+onHoldPositions = 0; let totalCVs = 0; const uniqueRecruiters = new Set(); const
+uniqueClients = new Set(); data.forEach(row => { // Check position status if
+(isEmptyCell(row['Position On Hold Date'])) { activePositions++; } else {
+onHoldPositions++; } // Count CVs (handle different possible column names) const
+cvCount = parseInt(row['Number Of CVs'] || row['CVs Count'] || 0); if
+(!isNaN(cvCount)) { totalCVs += cvCount; } // Count unique recruiters and
+clients if (row['Recruiter']) { uniqueRecruiters.add(row['Recruiter']); } if
+(row['Client Name']) { uniqueClients.add(row['Client Name']); } }); const
+summaryCards = [ { title: 'Total Positions', value: totalPositions, icon: '📊',
+color: '#2196F3' }, { title: 'Active Positions', value: activePositions, icon:
+'✅', color: '#4CAF50' }, { title: 'On Hold Positions', value: onHoldPositions,
+icon: '⏸️', color: '#FF9800' }, { title: 'Total CVs', value: totalCVs, icon:
+'📄', color: '#9C27B0' }, { title: 'Active Recruiters', value:
+uniqueRecruiters.size, icon: '👥', color: '#00BCD4' }, { title: 'Active
+Clients', value: uniqueClients.size, icon: '🏢', color: '#FF5722' } ];
+summaryCardsContainer.innerHTML = summaryCards.map(card => `
+<div class="metric-card" style="border-left-color: ${card.color}">
+    <div class="metric-icon">${card.icon}</div>
+    <div class="metric-content">
+        <div class="metric-value">${card.value}</div>
+        <div class="metric-label">${card.title}</div>
+    </div>
+</div>
+`).join(''); }
